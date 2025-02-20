@@ -106,4 +106,3 @@ For a full list of dependencies, refer to the package.json file.
 
 ## License
 
-ISC
