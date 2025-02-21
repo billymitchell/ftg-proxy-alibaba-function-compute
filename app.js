@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const path = require('path'); // added dependency
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -27,6 +28,11 @@ app.use(cors({
 
 // Middleware to parse JSON body
 app.use(express.json());
+
+// Serve the testing HTML page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Rate Limiting
 const limiter = rateLimit({
