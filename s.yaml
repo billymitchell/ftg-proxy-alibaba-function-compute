@@ -1,0 +1,25 @@
+edition: 1.0.0  # Serverless Devs YAML version
+name: my-node-api  # Project name
+access: default  # Uses the default access credentials
+
+services:
+  myApi:  # Defines the service
+    component: fc  # Using Function Compute (fc)
+    props:
+      region: cn-hongkong  # Deployment region
+      service:
+        name: myApiService  # Function Compute service name
+      function:
+        name: myApiFunction  # Function name
+        description: My Node.js API on Alibaba Cloud
+        runtime: nodejs18  # Specifies Node.js version
+        handler: app.handler  # Use the handler exported from app.js
+        memorySize: 128  # RAM allocation
+        timeout: 10  # Max execution time in seconds
+        codeUri: ./  # Points to your source code directory
+      triggers:
+        - name: httpTrigger  # Trigger name
+          type: http  # HTTP trigger (used for APIs)
+          config:
+            authType: anonymous  # Public access (no auth required)
+            methods: ["GET", "POST"]  # Allowed HTTP methods

@@ -1,10 +1,11 @@
 const express = require('express');
+const serverless = require('serverless-http'); // Required for Function Compute
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const path = require('path'); // added dependency
+
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Secure headers
 app.use(helmet());
@@ -58,7 +59,5 @@ app.use((err, req, res, next) => {
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// ✅ Export as a function for Alibaba Function Compute
+module.exports.handler = serverless(app);
