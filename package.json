@@ -18,6 +18,7 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "node-cache": "^5.1.2",
-    "p-limit": "^6.1.0"
+    "p-limit": "^6.1.0",
+    "serverless-http": "^3.2.0"
   }
 }

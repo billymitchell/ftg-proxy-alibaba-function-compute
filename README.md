@@ -2,13 +2,14 @@
 
 ## Overview
 
-A Node.js and Express.js-based proxy server that handles redemption codes, interfacing with Airtable to manage and update redemption statuses.
+A Node.js and Express.js-based proxy server that handles redemption codes, interfacing with Airtable to manage and update redemption statuses. This project is also set up for deployment on Alibaba Function Compute.
 
 ## Features
 
 - **Receive Order Data:** Processes incoming order data and updates redemption statuses in Airtable.
 - **Get Redemption Status:** Retrieves the status of redemption codes with caching for improved performance.
 - **Security:** Implements rate limiting, CORS restrictions, and secure HTTP headers using Helmet.
+- **Serverless Deployment:** Configured for Alibaba Function Compute using [s.yaml](s.yaml).
 
 ## Table of Contents
 
@@ -16,6 +17,7 @@ A Node.js and Express.js-based proxy server that handles redemption codes, inter
 - [Features](#features)
 - [Installation](#installation)
 - [Running the Application](#running-the-application)
+- [Deployment](#deployment)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 - [Dependencies](#dependencies)
@@ -68,6 +70,16 @@ A Node.js and Express.js-based proxy server that handles redemption codes, inter
 
    The server will run on the port specified in the .env file or default to port 3000.
 
+## Deployment
+
+1. **Deploy to Alibaba Function Compute:**
+
+   Ensure you have the Serverless Devs CLI installed and configured. Then, deploy the application using the following command:
+
+   ```sh
+   s deploy
+   ```
+
 ## API Endpoints
 
 ### POST /api/order-data
@@ -87,6 +99,7 @@ Retrieves the status of a specific redemption code.
 - [`utils/cache.js`](utils/cache.js): Implements caching for redemption code statuses.
 - [`package.json`](package.json): Project dependencies and scripts.
 - [`Procfile`](Procfile): Configuration for deploying the application.
+- [`s.yaml`](s.yaml): Configuration for deploying the application on Alibaba Function Compute.
 - [`.env`](.env): Environment variables, including Airtable API key.
 
 ## Dependencies
