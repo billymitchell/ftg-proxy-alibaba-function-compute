@@ -74,5 +74,15 @@ app.use((err, req, res, next) => {
   }
 });
 
-// Export the Express app wrapped with serverless-http for Alibaba Function Compute deployment
-module.exports.handler = serverless(app);
+// Create serverless handler with proper configuration for Alibaba Function Compute
+const handler = serverless(app, {
+  binary: ['application/octet-stream', 'image/*', 'audio/*', 'video/*', 'font/*'],
+  provider: 'aliyun'  // Specify Alibaba/Aliyun as the provider
+});
+
+// Export the handler with Alibaba Function Compute compatible interface
+exports.handler = async (req, resp, context) => {
+  // Call the serverless handler and return the response
+  const result = await handler(req, context);
+  return result;
+};
