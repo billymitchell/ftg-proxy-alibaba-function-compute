@@ -1,16 +1,29 @@
-const express = require('express');
-const serverless = require('serverless-http'); // Required for Function Compute
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
-const path = require('path'); // added dependency
+// Run npm install on startup to ensure all dependencies are installed
+const { execSync } = require('child_process');
 
+try {
+  console.log("Installing dependencies...");
+  execSync('npm install', { stdio: 'inherit' }); // executes "npm install" synchronously
+  console.log("Dependencies installed!");
+} catch (error) {
+  console.error("Failed to install dependencies:", error);
+}
+
+// Import necessary dependencies
+const express = require('express'); // Express framework for building web apps
+const serverless = require('serverless-http'); // Wraps Express app for serverless deployment
+const cors = require('cors'); // Handles Cross-Origin Resource Sharing
+const rateLimit = require('express-rate-limit'); // Middleware for rate limiting requests
+const helmet = require('helmet'); // Secures the app by setting various HTTP headers
+const path = require('path'); // Node.js module for handling file paths
+
+// Create an instance of an Express app
 const app = express();
 
-// Secure headers
+// Use Helmet to secure HTTP headers
 app.use(helmet());
 
-// Set up CORS
+// Set up CORS with allowed origins
 const allowedOrigins = [
   /^https?:\/\/(www\.)?ftg-redemption-test\.mybrightsites\.com$/,
   /^https?:\/\/(www\.)?ftg-redemption\.mybrightsites\.com$/,
@@ -19,6 +32,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow request if origin matches allowedOrigins regex or if origin is not provided (e.g., same-origin requests)
     if (allowedOrigins.some(regex => regex.test(origin)) || !origin) {
       callback(null, true);
     } else {
@@ -27,37 +41,38 @@ app.use(cors({
   },
 }));
 
-// Middleware to parse JSON body
+// Middleware to parse incoming JSON payloads
 app.use(express.json());
 
-// Serve the testing HTML page
+// Serve the testing HTML page located in the project root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Rate Limiting
+// Set up rate limiting: limit each IP to 100 requests per minute
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 100, // Limit each IP to 100 requests per minute
+  max: 100, // Maximum 100 requests per window per IP
 });
 app.use(limiter);
 
-// Import routes
+// Import application routes
 const getRedemptionStatus = require('./routes/getRedemptionStatus');
 const receiveOrderData = require('./routes/receiveOrderData');
 
-// Use the routes
+// Mount routes on specific paths
 app.use('/api/redemption-code-status', getRedemptionStatus);
 app.use('/api', receiveOrderData);
 
-// Error handling middleware
+// Global error handling middleware
 app.use((err, req, res, next) => {
   if (err) {
+    // Send error response if an error occurs
     res.status(500).json({ error: err.message });
   } else {
     next();
   }
 });
 
-// ✅ Export as a function for Alibaba Function Compute
+// Export the Express app wrapped with serverless-http for Alibaba Function Compute deployment
 module.exports.handler = serverless(app);
