@@ -112,13 +112,15 @@ exports.handler = async (req, resp, context) => {
     // Response data to capture Express output
     let responseData = {
       statusCode: 200,
-      headers: {},
-      body: ''
+      headers: {
+        'Content-Type': 'application/json' // Set default content type
+      },
+      body: JSON.stringify({ message: "Request processed successfully" }) // Default response
     };
 
     const expressRes = {
       statusCode: 200,
-      headers: {},
+      headers: { 'Content-Type': 'application/json' }, // Default headers
       body: '',
       status: function(code) {
         this.statusCode = code;
@@ -137,8 +139,13 @@ exports.handler = async (req, resp, context) => {
         responseData.body = jsonBody;
       },
       send: function(body) {
-        this.body = body;
-        responseData.body = body;
+        // If body is an object, stringify it
+        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
+          this.json(body);
+        } else {
+          this.body = body;
+          responseData.body = body;
+        }
       },
       sendFile: function(filePath) {
         const fs = require('fs');
@@ -158,7 +165,7 @@ exports.handler = async (req, resp, context) => {
           this.set('Content-Type', contentType);
           this.send(content);
         } catch (error) {
-          this.status(404).send('File not found');
+          this.status(404).json({ error: 'File not found' });
         }
       }
     };
@@ -170,10 +177,8 @@ exports.handler = async (req, resp, context) => {
           responseData.statusCode = 500;
           responseData.headers['Content-Type'] = 'application/json';
           responseData.body = JSON.stringify({ error: err.message });
-          resolve();
-        } else {
-          resolve();
         }
+        resolve();
       });
     });
 
@@ -186,10 +191,18 @@ exports.handler = async (req, resp, context) => {
       resp.headers[header] = responseData.headers[header];
     });
     
+    // Ensure we always return a valid JSON response if that's expected
+    if (resp.headers['Content-Type'] === 'application/json' && 
+        (responseData.body === '' || responseData.body === undefined)) {
+      return JSON.stringify({ message: "Request completed" });
+    }
+    
     // Return the body directly - this is what Alibaba Function Compute expects
     return responseData.body;
     
   } catch (error) {
+    console.error('Error in handler:', error);
+    
     // Set error status code if possible
     if (resp && typeof resp.statusCode !== 'undefined') {
       resp.statusCode = 500;
