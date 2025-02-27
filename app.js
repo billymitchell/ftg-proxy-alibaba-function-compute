@@ -134,74 +134,77 @@ exports.handler = async (req, resp, context) => {
     };
 
     const expressRes = {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: '',
-      status: function(code) {
-        this.statusCode = code;
-        responseData.statusCode = code;
-        return this;
-      },
-      set: function(key, value) {
-        this.headers[key] = value;
-        responseData.headers[key] = value;
-        return this;
-      },
-      json: function(body) {
-        responseEnded = true;
-        this.set('Content-Type', 'application/json');
-        const jsonBody = JSON.stringify(body);
-        this.body = jsonBody;
-        responseData.body = jsonBody;
-        console.log('Response JSON:', body);
-      },
-      send: function(body) {
-        responseEnded = true;
-        if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-          this.json(body);
-        } else {
-          this.body = body;
-          responseData.body = body;
-          console.log('Response sent:', body);
-        }
-      },
-      end: function(data) {
-        responseEnded = true;
-        if (data) {
-          this.send(data);
-        }
-        console.log('Response ended');
-      },
-      sendFile: function(filePath) {
-        const fs = require('fs');
-        try {
-          const content = fs.readFileSync(filePath);
-          const ext = path.extname(filePath);
-          const contentType = {
-            '.html': 'text/html',
-            '.css': 'text/css',
-            '.js': 'text/javascript',
-            '.json': 'application/json',
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.gif': 'image/gif'
-          }[ext] || 'text/plain';
-          
-          this.set('Content-Type', contentType);
-          this.send(content);
-        } catch (error) {
-          this.status(404).json({ error: 'File not found' });
-        }
-      },
-      // Add redirect method which Express might use
-      redirect: function(url) {
-        responseEnded = true;
-        this.status(302);
-        this.set('Location', url);
-        this.end();
-        console.log('Redirected to:', url);
-      }
-    };
+  statusCode: 200,
+  headers: { 'Content-Type': 'application/json' },
+  body: '',
+  status(code) {
+    this.statusCode = code;
+    responseData.statusCode = code;
+    return this;
+  },
+  set(key, value) {
+    this.headers[key] = value;
+    responseData.headers[key] = value;
+    return this;
+  },
+  setHeader(key, value) {
+    return this.set(key, value);
+  },
+  json(body) {
+    responseEnded = true;
+    this.set('Content-Type', 'application/json');
+    const jsonBody = JSON.stringify(body);
+    this.body = jsonBody;
+    responseData.body = jsonBody;
+    console.log('Response JSON:', body);
+  },
+  send(body) {
+    responseEnded = true;
+    if (typeof body === 'object' && !Buffer.isBuffer(body)) {
+      this.json(body);
+    } else {
+      this.body = body;
+      responseData.body = body;
+      console.log('Response sent:', body);
+    }
+  },
+  end(data) {
+    responseEnded = true;
+    if (data) {
+      this.send(data);
+    }
+    console.log('Response ended');
+  },
+  sendFile(filePath) {
+    const fs = require('fs');
+    try {
+      const content = fs.readFileSync(filePath);
+      const ext = path.extname(filePath);
+      const contentType = {
+        '.html': 'text/html',
+        '.css': 'text/css',
+        '.js': 'text/javascript',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.gif': 'image/gif'
+      }[ext] || 'text/plain';
+      
+      this.setHeader('Content-Type', contentType);
+      this.send(content);
+    } catch (error) {
+      this.status(404).json({ error: 'File not found' });
+    }
+  },
+  redirect(url) {
+    responseEnded = true;
+    this.status(302);
+    this.setHeader('Location', url);
+    this.end();
+    console.log('Redirected to:', url);
+  }
+};
+
 
     // Process the request through Express app - but wait for completion with a timeout
     await new Promise((resolve) => {
