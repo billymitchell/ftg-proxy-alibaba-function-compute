@@ -134,7 +134,9 @@ exports.handler = (req, resp, context) => {
         
         // Set headers
         Object.keys(this.headers).forEach(header => {
-          resp.setHeader(header, this.headers[header]);
+          // Use bracket notation instead of setHeader method
+          resp.headers = resp.headers || {};
+          resp.headers[header] = this.headers[header];
         });
         
         // Set body
@@ -166,19 +168,23 @@ exports.handler = (req, resp, context) => {
     // Process the request through Express app
     app(expressReq, expressRes, (err) => {
       if (err) {
-        // Use the appropriate properties/methods for the Alibaba response object
+        // Use direct property setting for headers
         resp.statusCode = 500;
-        resp.setHeader('Content-Type', 'application/json');
+        resp.headers = resp.headers || {};
+        resp.headers['Content-Type'] = 'application/json';
         resp.send(JSON.stringify({ error: err.message }));
       }
     });
 
+    // Debug what methods and properties are available
     console.log('Response object methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(resp)));
     console.log('Response object properties:', Object.keys(resp));
+    
   } catch (error) {
-    // Handle errors - use the appropriate properties/methods for Alibaba
+    // Handle errors using direct property access
     resp.statusCode = 500;
-    resp.setHeader('Content-Type', 'application/json');
+    resp.headers = resp.headers || {};
+    resp.headers['Content-Type'] = 'application/json';
     resp.send(JSON.stringify({ error: error.message }));
   }
 };
