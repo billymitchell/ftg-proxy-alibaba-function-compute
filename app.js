@@ -130,7 +130,7 @@ exports.handler = (req, resp, context) => {
         this.body = body;
         
         // Transfer to Alibaba Function Compute response
-        resp.setStatusCode(this.statusCode);
+        resp.statusCode = this.statusCode;
         
         // Set headers
         Object.keys(this.headers).forEach(header => {
@@ -166,14 +166,15 @@ exports.handler = (req, resp, context) => {
     // Process the request through Express app
     app(expressReq, expressRes, (err) => {
       if (err) {
-        resp.setStatusCode(500);
+        // Use the appropriate properties/methods for the Alibaba response object
+        resp.statusCode = 500;
         resp.setHeader('Content-Type', 'application/json');
         resp.send(JSON.stringify({ error: err.message }));
       }
     });
   } catch (error) {
-    // Handle errors
-    resp.setStatusCode(500);
+    // Handle errors - use the appropriate properties/methods for Alibaba
+    resp.statusCode = 500;
     resp.setHeader('Content-Type', 'application/json');
     resp.send(JSON.stringify({ error: error.message }));
   }
