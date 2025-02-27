@@ -95,7 +95,7 @@ function parseQueryParams(url) {
 }
 
 // Export direct handler function for Alibaba Function Compute
-exports.handler = (req, resp, context) => {
+exports.handler = async (req, resp, context) => {
   try {
     // Create Express request and response objects
     const expressReq = {
@@ -109,38 +109,36 @@ exports.handler = (req, resp, context) => {
       get: (header) => req.headers[header.toLowerCase()]
     };
 
+    // Response data to capture Express output
+    let responseData = {
+      statusCode: 200,
+      headers: {},
+      body: ''
+    };
+
     const expressRes = {
       statusCode: 200,
       headers: {},
       body: '',
       status: function(code) {
         this.statusCode = code;
+        responseData.statusCode = code;
         return this;
       },
       set: function(key, value) {
         this.headers[key] = value;
+        responseData.headers[key] = value;
         return this;
       },
       json: function(body) {
         this.set('Content-Type', 'application/json');
-        this.body = JSON.stringify(body);
-        this.send(this.body);
+        const jsonBody = JSON.stringify(body);
+        this.body = jsonBody;
+        responseData.body = jsonBody;
       },
       send: function(body) {
         this.body = body;
-        
-        // Transfer to Alibaba Function Compute response
-        resp.statusCode = this.statusCode;
-        
-        // Set headers
-        Object.keys(this.headers).forEach(header => {
-          // Use bracket notation instead of setHeader method
-          resp.headers = resp.headers || {};
-          resp.headers[header] = this.headers[header];
-        });
-        
-        // Set body
-        resp.send(this.body);
+        responseData.body = body;
       },
       sendFile: function(filePath) {
         const fs = require('fs');
@@ -165,27 +163,46 @@ exports.handler = (req, resp, context) => {
       }
     };
 
-    // Process the request through Express app
-    app(expressReq, expressRes, (err) => {
-      if (err) {
-        // Use direct property setting for headers
-        resp.statusCode = 500;
-        resp.headers = resp.headers || {};
-        resp.headers['Content-Type'] = 'application/json';
-        resp.send(JSON.stringify({ error: err.message }));
-      }
+    // Process the request through Express app - but wait for completion
+    await new Promise((resolve, reject) => {
+      app(expressReq, expressRes, (err) => {
+        if (err) {
+          responseData.statusCode = 500;
+          responseData.headers['Content-Type'] = 'application/json';
+          responseData.body = JSON.stringify({ error: err.message });
+          resolve();
+        } else {
+          resolve();
+        }
+      });
     });
 
-    // Debug what methods and properties are available
-    console.log('Response object methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(resp)));
-    console.log('Response object properties:', Object.keys(resp));
+    // Apply the collected response data to Alibaba's response object
+    resp.statusCode = responseData.statusCode;
+    
+    // Set headers directly on resp.headers
+    resp.headers = resp.headers || {};
+    Object.keys(responseData.headers).forEach(header => {
+      resp.headers[header] = responseData.headers[header];
+    });
+    
+    // Return the body directly - this is what Alibaba Function Compute expects
+    return responseData.body;
     
   } catch (error) {
-    // Handle errors using direct property access
-    resp.statusCode = 500;
-    resp.headers = resp.headers || {};
-    resp.headers['Content-Type'] = 'application/json';
-    resp.send(JSON.stringify({ error: error.message }));
+    // Set error status code if possible
+    if (resp && typeof resp.statusCode !== 'undefined') {
+      resp.statusCode = 500;
+    }
+    
+    // Set headers if possible
+    if (resp && typeof resp.headers !== 'undefined') {
+      resp.headers = resp.headers || {};
+      resp.headers['Content-Type'] = 'application/json';
+    }
+    
+    // Return error response as string
+    return JSON.stringify({ error: error.message });
   }
 };
 
