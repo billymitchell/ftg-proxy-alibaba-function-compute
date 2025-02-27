@@ -96,6 +96,16 @@ function parseQueryParams(url) {
 
 // Export direct handler function for Alibaba Function Compute
 exports.handler = async (req, resp, context) => {
+  // Debug incoming request
+  console.log('Request received:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    headers: req.headers,
+    queries: req.queries,
+    body: req.body
+  });
+
   try {
     // Create Express request and response objects
     const expressReq = {
@@ -106,21 +116,26 @@ exports.handler = async (req, resp, context) => {
       query: req.queries || parseQueryParams(req.url),
       params: {},
       path: req.path,
-      get: (header) => req.headers[header.toLowerCase()]
+      get: (header) => req.headers[header.toLowerCase()],
+      // Add the following properties which Express might expect
+      ip: req.clientIP || '127.0.0.1',
+      protocol: 'http',
+      secure: false
     };
 
-    // Response data to capture Express output
+    // Set up a more robust response tracking
+    let responseEnded = false;
     let responseData = {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json' // Set default content type
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ message: "Request processed successfully" }) // Default response
     };
 
     const expressRes = {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' }, // Default headers
+      headers: { 'Content-Type': 'application/json' },
       body: '',
       status: function(code) {
         this.statusCode = code;
@@ -133,19 +148,29 @@ exports.handler = async (req, resp, context) => {
         return this;
       },
       json: function(body) {
+        responseEnded = true;
         this.set('Content-Type', 'application/json');
         const jsonBody = JSON.stringify(body);
         this.body = jsonBody;
         responseData.body = jsonBody;
+        console.log('Response JSON:', body);
       },
       send: function(body) {
-        // If body is an object, stringify it
+        responseEnded = true;
         if (typeof body === 'object' && !Buffer.isBuffer(body)) {
           this.json(body);
         } else {
           this.body = body;
           responseData.body = body;
+          console.log('Response sent:', body);
         }
+      },
+      end: function(data) {
+        responseEnded = true;
+        if (data) {
+          this.send(data);
+        }
+        console.log('Response ended');
       },
       sendFile: function(filePath) {
         const fs = require('fs');
@@ -167,19 +192,59 @@ exports.handler = async (req, resp, context) => {
         } catch (error) {
           this.status(404).json({ error: 'File not found' });
         }
+      },
+      // Add redirect method which Express might use
+      redirect: function(url) {
+        responseEnded = true;
+        this.status(302);
+        this.set('Location', url);
+        this.end();
+        console.log('Redirected to:', url);
       }
     };
 
-    // Process the request through Express app - but wait for completion
-    await new Promise((resolve, reject) => {
+    // Process the request through Express app - but wait for completion with a timeout
+    await new Promise((resolve) => {
+      // Add a timeout to ensure we don't hang forever
+      const timeout = setTimeout(() => {
+        console.log('Express request timed out after 10s');
+        if (!responseEnded) {
+          responseData.statusCode = 504;
+          responseData.body = JSON.stringify({ error: 'Request timed out' });
+        }
+        resolve();
+      }, 10000);
+      
+      // Debug the routes to ensure they're properly registered
+      console.log('Express routes:', app._router.stack
+        .filter(r => r.route)
+        .map(r => ({ 
+          path: r.route.path, 
+          methods: Object.keys(r.route.methods).join(',')
+        })));
+      
+      // Process the request
       app(expressReq, expressRes, (err) => {
+        clearTimeout(timeout);
         if (err) {
+          console.error('Express middleware error:', err);
           responseData.statusCode = 500;
           responseData.headers['Content-Type'] = 'application/json';
           responseData.body = JSON.stringify({ error: err.message });
+        } else if (!responseEnded) {
+          console.log('Express request completed without sending a response');
         }
         resolve();
       });
+    });
+    
+    // Debug response data
+    console.log('Response data after Express handling:', {
+      statusCode: responseData.statusCode,
+      headers: responseData.headers,
+      bodyStart: typeof responseData.body === 'string' ? 
+        responseData.body.substring(0, 100) + '...' : 
+        responseData.body
     });
 
     // Apply the collected response data to Alibaba's response object
@@ -194,14 +259,18 @@ exports.handler = async (req, resp, context) => {
     // Ensure we always return a valid JSON response if that's expected
     if (resp.headers['Content-Type'] === 'application/json' && 
         (responseData.body === '' || responseData.body === undefined)) {
-      return JSON.stringify({ message: "Request completed" });
+      console.log('Empty JSON response, using fallback');
+      return JSON.stringify({ message: "Request completed successfully" });
     }
+    
+    // Final debug before returning
+    console.log('Returning response with status:', responseData.statusCode);
     
     // Return the body directly - this is what Alibaba Function Compute expects
     return responseData.body;
     
   } catch (error) {
-    console.error('Error in handler:', error);
+    console.error('Critical error in handler:', error);
     
     // Set error status code if possible
     if (resp && typeof resp.statusCode !== 'undefined') {
@@ -215,7 +284,11 @@ exports.handler = async (req, resp, context) => {
     }
     
     // Return error response as string
-    return JSON.stringify({ error: error.message });
+    return JSON.stringify({ 
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 };
 
