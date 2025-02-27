@@ -76,8 +76,7 @@ app.use((err, req, res, next) => {
 
 // Create serverless handler with proper configuration for Alibaba Function Compute
 const handler = serverless(app, {
-  binary: ['application/octet-stream', 'image/*', 'audio/*', 'video/*', 'font/*'],
-  provider: 'aliyun'  // Specify Alibaba/Aliyun as the provider
+  binary: ['application/octet-stream', 'image/*', 'audio/*', 'video/*', 'font/*']
 });
 
 // Export the handler with Alibaba Function Compute compatible interface
