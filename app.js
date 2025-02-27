@@ -172,6 +172,9 @@ exports.handler = (req, resp, context) => {
         resp.send(JSON.stringify({ error: err.message }));
       }
     });
+
+    console.log('Response object methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(resp)));
+    console.log('Response object properties:', Object.keys(resp));
   } catch (error) {
     // Handle errors - use the appropriate properties/methods for Alibaba
     resp.statusCode = 500;
